@@ -104,8 +104,8 @@ set_penalty_factors <- function(unpenalized_covariates, genetic_variants, intera
 #' @param penalty_factors Vector of penalty factors.
 #' @param n_folds Number of fold cross validation.
 #' @return Cross-validated Lasso model.
-fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 5) {
-  cv_fit <- cv.glmnet(x = X_matrix, y = y_vector, family = "gaussian", alpha = 1, penalty.factor = penalty_factors, n_folds = n_folds)
+fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 5, standardize = TRUE) {
+  cv_fit <- cv.glmnet(x = X_matrix, y = y_vector, family = "gaussian", alpha = 1, penalty.factor = penalty_factors, n_folds = n_folds, standardize = standardize)
   return(cv_fit)
 }
 
@@ -249,6 +249,19 @@ MK.q.byStat<-function (kappa,tau,M,Rej.Bound=10000){
   return(q)
 }
 
+# copy from https://github.com/msesia/knockoff-filter/blob/master/R/knockoff/R/knockoff_filter.R
+knockoff.threshold <- function(W, fdr=1.10, offset=1) {
+  if(offset!=1 && offset!=0) {
+    stop('Input offset must be either 0 or 1')
+  }
+  ts = sort(c(0, abs(W)))
+  ratio = sapply(ts, function(t)
+    (offset + sum(W <= -t)) / max(1, sum(W >= t)))
+  ok = which(ratio <= fdr)
+  ifelse(length(ok) > 0, ts[ok[1]], Inf)
+}
+
+
 #' Knockoff Filter Calculations
 #'
 #' @param local_feature_importance Original feature importance matrix.
@@ -263,7 +276,7 @@ knockoff_filter <- function(local_feature_importance, local_feature_importance_k
   for (i in 1:nrow(W)) {
     # Calculate MK statistics for individual i across all SNPs
     MK_stat <- MK.statistic(local_feature_importance[i, ], local_feature_importance_knockoff[i, ])
-    q <- MK.q.byStat(MK_stat[,'kappa'], MK_stat[,'tau'], ncol(local_feature_importance_knockoff), Rej.Bound = 10000)
+    q <- MK.q.byStat(MK_stat[,'kappa'], MK_stat[,'tau'], M=1, Rej.Bound = 10000)
     q_values[i, ] <- q
   }
   # Create the selection matrix S_ij: S_ij = I(q_ij <= FDR_rate)
@@ -272,7 +285,7 @@ knockoff_filter <- function(local_feature_importance, local_feature_importance_k
   # Create scaled selection matrix using W matrix and selection matrix S_ij
   scaled_selection_matrix <- t((t(W) / apply(W, 2, max, na.rm = TRUE))) * S_ij
   
-  return(list(S_ij = S_ij, scaled_selection_matrix = scaled_selection_matrix, W = W))
+  return(list(S_ij = S_ij, scaled_selection_matrix = scaled_selection_matrix, W = W, q_values = q_values))
 }
 
 
@@ -288,10 +301,11 @@ knockoff_filter <- function(local_feature_importance, local_feature_importance_k
 #' @param Z Vector or matrix representing heterogeneity variable(s) (e.g., EUR or PCs).
 #' @param y Outcome.
 #' @param n_folds Number of fold cross validation with default of 5.
+#' @param standardize a logical flag for x variable standardization prior to fitting the model sequence. The coefficients are always returned on the original scale.
 #' @param FDR_rate False Discovery Rate threshold, default is 0.1.
 #' @return A list containing `scaled_selection_matrix`, `selection_matrix`, and `W_statistic_matrix`.
 #' @export
-get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff, additional_covariates, Z, y, n_folds=5, FDR_rate = 0.1) {
+get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff, additional_covariates, Z, y, n_folds=5, standardize=TRUE, FDR_rate = 0.1) {
   if (is.null(Z)) {
     stop("The heterogeneity variable Z cannot be NULL. Please provide a valid input for Z.")
   }
@@ -324,7 +338,7 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   y_vector <- as.numeric(y)
   cat("\n--- Fitting Lasso model...\n")
   lasso_timing <- system.time({
-    cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds)
+    cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize)
   })
   cat("--- Time taken for Lasso model fitting:", lasso_timing[3], "seconds\n")
   
@@ -344,9 +358,11 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   cat("--- Time taken for knockoff filter:", knockoff_timing[3], "seconds\n")
   
   return(list(
+    coefs = coefs,
     scaled_selection_matrix = matrices$scaled_selection_matrix,
     selection_matrix = matrices$S_ij,
-    W_statistic_matrix = matrices$W
+    W_statistic_matrix = matrices$W,
+    q_values = matrices$q_values
   ))
 }
 
