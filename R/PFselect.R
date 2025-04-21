@@ -93,21 +93,22 @@ prepare_feat_grps <- function(num_snps, num_z, num_u, num_all) {
   num_same_snp <- 2*(1+num_z) # number of features associated with the same snp 2(1+num_z)
   new_order <- list()
   for (i in 1:num_snps) {
-    grp <- i + seq(0, (num_same_snp-1)*num_snps, by= num_snps)
+    grp <- i + seq(0, (num_same_snp-1)*num_snps, by=num_snps)
     new_order[[i]] <- grp
   }
   new_order <- c(seq(1,num_u), unlist(new_order) + num_u) # 
   origin_order <- seq(1:num_all)
   recovery_index <- match(origin_order, new_order)
   
-  grp_for_grplasso <- c(seq(1,num_u),seq(1, num_same_snp*(num_snps-1)+1, by = num_same_snp)+num_u)
+  grp_for_grplasso <- c(seq(1,num_u),seq(1, (1+num_z)*(2*num_snps-1)+1, by = 1+num_z)+num_u)
+  
   return(list(new_order = new_order, 
               recovery_index = recovery_index,
               grp_for_grplasso = grp_for_grplasso))
 }
 
 
-#' Set Penalty Factors
+#' Set Penalty Factors for Lasso
 #'
 #' @param unpenalized_covariates Matrix of covariates.
 #' @param genetic_variants Matrix of original genetic variants.
@@ -120,6 +121,19 @@ set_penalty_factors <- function(unpenalized_covariates, genetic_variants, intera
   return(penalty_factors)
 }
 
+#' Set Penalty Factors for Group Lasso
+#'
+#' @param num_snps Number of snps equal to ncol(genetic_variants).
+#' @param num_z Number of interacting variables (number of pcs)
+#' @param num_u Number of unpenalized covariates (sum of additional vars and Z)
+#' @return Vector of penalty factors.
+set_penalty_factors_grpLasso <- function(num_snps, num_z, num_u) {
+  # Default is square-root of group sizes for each group.
+  penalty_for_grp <- sqrt(1+num_z) # penalty for groups except unpenalized covariates
+  num_grp <- 2 * num_snps # number of groups except unpenalized covariates
+  penalty_factors <- c(rep(0, num_u), rep(penalty_for_grp, num_grp))
+  return(penalty_factors)
+}
 
 #' Fit Lasso Model with Cross-Validation
 #'
@@ -159,13 +173,16 @@ extract_coefficients <- function(cv_fit) {
 #' @param n_folds Number of fold cross validation.
 #' @param standardize standardization
 #' @return Cross-validated Lasso model.
-fit_grp_lasso_model <- function(X_matrix, y_vector, groups, n_folds = 5, standardize = TRUE) {
+fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_folds = 5, standardize = TRUE) {
+  # https://cran.r-project.org/web/packages/adelie/adelie.pdf
   cv_fit <- cv.grpnet(X = X_matrix, 
-                     glm = glm.gaussian(y_vector), 
-                     groups = groups, 
-                     alpha = 1, 
-                     n_folds = n_folds, 
-                     standardize = standardize)
+                      glm = glm.gaussian(y_vector), 
+                      groups = groups, 
+                      adev_tol = 0.99,
+                      alpha = 1, 
+                      penalty = penalty_factors,
+                      n_folds = n_folds, 
+                      standardize = standardize)
   return(cv_fit)
 }
 
@@ -176,7 +193,7 @@ fit_grp_lasso_model <- function(X_matrix, y_vector, groups, n_folds = 5, standar
 #' @return Coefficients for original and knockoff snps and their interaction terms
 extract_grp_lasso_coefficients <- function(cv_fit, recovery_index) {
   
-  # Note that if the default standardize=TRUEE was used in fitting the grpnet 
+  # Note that if the default standardize=TRUE was used in fitting the grpnet 
   # object, the coefficients reported are for the standardized inputs. However, 
   # the predict function will apply the stored standardization to newx and give 
   # the correct predictions.
@@ -197,7 +214,7 @@ extract_grp_lasso_coefficients <- function(cv_fit, recovery_index) {
 #' @param unpenalized_covariates Matrix of covariates (not penalized).
 #' @param Z Heterogeneity variable (e.g., EUR or PCs).
 #' @return List with feature importance matrices for original and knockoff variants.
-calculate_feature_importance <- function(coefs, genetic_variants, genetic_variants_knockoff, interaction_terms, interaction_terms_knockoff, unpenalized_covariates, Z) {
+calculate_feature_importance <- function(coefs, genetic_variants, genetic_variants_knockoff, interaction_terms, interaction_terms_knockoff, unpenalized_covariates, Z, model) {
   n_genetic_variants <- ncol(genetic_variants)
   n_interaction_terms <- ncol(interaction_terms)
   n_genetic_variants_knockoff <- ncol(genetic_variants_knockoff) # actually, same with genetic_variants
@@ -215,7 +232,12 @@ calculate_feature_importance <- function(coefs, genetic_variants, genetic_varian
   print(paste("n_heterogeneity :", n_heterogeneity))
   
   # Get indices and coefficients for genetic variants
-  beta_start <- n_covariates + 2 # Accounting for intercept
+  
+  beta_start <- if (model == "Lasso") {
+    n_covariates + 2 # Accounting for intercept
+  } else {
+    n_covariates + 1
+  }
   beta_end <- beta_start + n_genetic_variants - 1
   beta <- coefs[beta_start:beta_end]
 
@@ -371,7 +393,7 @@ knockoff_filter <- function(local_feature_importance, local_feature_importance_k
 #' @param n_folds Number of fold cross validation with default of 5.
 #' @param standardize a logical flag for x variable standardization prior to fitting the model sequence. The coefficients are always returned on the original scale.
 #' @param FDR_rate False Discovery Rate threshold, default is 0.1.
-#' @param model ML model used to fit data, choose "Lasso" or "Group Lasso"
+#' @param model ML model used to fit data, choose "Lasso" or "Grplasso"
 #' @return A list containing `scaled_selection_matrix`, `selection_matrix`, and `W_statistic_matrix`.
 #' @export
 get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff, additional_covariates, Z, y, n_folds=5, standardize=TRUE, FDR_rate=0.1, model="Lasso") {
@@ -399,7 +421,7 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   
   # Combine predictors
   X_matrix <- combine_predictors(unpenalized_covariates, genetic_variants, interaction_terms, genetic_variants_knockoff, interaction_terms_knockoff)
-  
+
   # Prepare groups information for group lasso model
   grp_info <- prepare_feat_grps(ncol(genetic_variants), ncol(Z), ncol(unpenalized_covariates), ncol(X_matrix))
   new_order <- grp_info$new_order
@@ -407,11 +429,17 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   grp_for_grplasso <- grp_info$grp_for_grplasso
   
   # Set penalty factors
-  penalty_factors <- set_penalty_factors(unpenalized_covariates, genetic_variants, interaction_terms, genetic_variants_knockoff, interaction_terms_knockoff)
+  penalty_factors <- if (model == "Lasso") {
+      set_penalty_factors(unpenalized_covariates, genetic_variants, interaction_terms, genetic_variants_knockoff, interaction_terms_knockoff)
+    } else if (model == "Grplasso") {
+      set_penalty_factors_grpLasso(ncol(genetic_variants), ncol(Z), ncol(unpenalized_covariates))
+    } else {
+      stop('Invalid model type. Choose either "Lasso" or "Grplasso".')
+    }
   
   # Fit Lasso model, using n-fold cross validation
-  if (model == "Group Lasso") {
-    X_matrix <- X_matrix[new_order]
+  if (model == "Grplasso") {
+    X_matrix <- X_matrix[, new_order]
   }
   y_vector <- as.numeric(y)
   cat(paste0("\n--- Fitting ", model, " model...\n"))
@@ -419,10 +447,10 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   fit_data_timing <- system.time({
     if (model == "Lasso") {
       cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize)
-    } else if (model == "Group Lasso") {
-      cv_fit <- fit_grp_lasso_model(X_matrix, y_vector, grp_for_grplasso, n_folds, standardize)
+    } else if (model == "Grplasso") {
+      cv_fit <- fit_grp_lasso_model(X_matrix, y_vector, penalty_factors, grp_for_grplasso, n_folds, standardize)
     } else {
-      stop('Invalid model type. Choose either "Lasso" or "Group Lasso".')
+      stop('Invalid model type. Choose either "Lasso" or "Grplasso".')
     }
   })
   
@@ -431,16 +459,16 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   # Extract coefficients
   coefs <- if (model == "Lasso") {
     extract_coefficients(cv_fit)
-  } else if (model == "Group Lasso") {
+  } else if (model == "Grplasso") {
     extract_grp_lasso_coefficients(cv_fit, recovery_index)
   } else {
-    stop('Invalid model type. Choose either "Lasso" or "Group Lasso".')
+    stop('Invalid model type. Choose either "Lasso" or "Grplasso".')
   }
   
   # calculate feature importance
   cat("\n--- Calculating feature importance...\n")
   feature_timing <- system.time({
-    feature_importances <- calculate_feature_importance(coefs, genetic_variants, genetic_variants_knockoff, interaction_terms, interaction_terms_knockoff, unpenalized_covariates, Z)
+    feature_importances <- calculate_feature_importance(coefs, genetic_variants, genetic_variants_knockoff, interaction_terms, interaction_terms_knockoff, unpenalized_covariates, Z, model)
   })
   cat("--- Time taken for feature importance calculation:", feature_timing[3], "seconds\n")
   
