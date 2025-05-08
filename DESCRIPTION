@@ -5,7 +5,7 @@ Authors@R:
     c(person("Rachel", "Yu", , "yuyue01@stanford.edu", role = c("aut", "cre")),
       person("Julie", "Wang", , "frwang@stanford.edu", role = c("aut")))
 Description: Functions for modeling and analyzing genetic variants using Lasso-penalized quadratic regression.
-Depends: R (>= 3.5.0), glmnet, adelie, ggplot2, reshape2, corpcor, RColorBrewer, GhostKnockoff
+Depends: R (>= 3.5.0), glmnet, adelie, gglasso, ggplot2, reshape2, corpcor, RColorBrewer, GhostKnockoff
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8

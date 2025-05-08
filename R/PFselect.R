@@ -100,7 +100,11 @@ prepare_feat_grps <- function(num_snps, num_z, num_u, num_all) {
   origin_order <- seq(1:num_all)
   recovery_index <- match(origin_order, new_order)
   
+  # adelie
   grp_for_grplasso <- c(seq(1,num_u),seq(1, (1+num_z)*(2*num_snps-1)+1, by = 1+num_z)+num_u)
+  
+  # gglasso
+  # grp_for_grplasso <- c(seq(1,num_u),rep(1:(2*num_snps), each = 1+num_z)+num_u)
   
   return(list(new_order = new_order, 
               recovery_index = recovery_index,
@@ -142,7 +146,7 @@ set_penalty_factors_grpLasso <- function(num_snps, num_z, num_u) {
 #' @param penalty_factors Vector of penalty factors.
 #' @param n_folds Number of fold cross validation.
 #' @return Cross-validated Lasso model.
-fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 5, standardize = TRUE) {
+fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 5, standardize = FALSE) {
   cv_fit <- cv.glmnet(x = X_matrix, 
                       y = y_vector, 
                       family = "gaussian", 
@@ -173,16 +177,31 @@ extract_coefficients <- function(cv_fit) {
 #' @param n_folds Number of fold cross validation.
 #' @param standardize standardization
 #' @return Cross-validated Lasso model.
-fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_folds = 5, standardize = TRUE) {
+fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_folds = 5, standardize = FALSE) {
+  # adelie:
   # https://cran.r-project.org/web/packages/adelie/adelie.pdf
   cv_fit <- cv.grpnet(X = X_matrix, 
                       glm = glm.gaussian(y_vector), 
-                      groups = groups, 
-                      adev_tol = 0.99,
+                      groups = groups,
                       alpha = 1, 
                       penalty = penalty_factors,
                       n_folds = n_folds, 
+                      adev_tol = 0.999,
+                      ddev_tol = 1e-5,
+                      lmda_path_size = 100,
+                      min_ratio = 0.0001,
                       standardize = standardize)
+  
+  
+  # gglasso:
+  # https://cran.r-project.org/web/packages/gglasso/gglasso.pdf
+  # cv_fit <- cv.gglasso(x = X_matrix, 
+  #                      y = y_vector, 
+  #                      group = groups,
+  #                      pf = penalty_factors,
+  #                      loss = "ls",
+  #                      pred.loss = "L2", # mean square error used by least squares
+  #                      nfolds = n_folds)
   return(cv_fit)
 }
 
@@ -198,7 +217,12 @@ extract_grp_lasso_coefficients <- function(cv_fit, recovery_index) {
   # the predict function will apply the stored standardization to newx and give 
   # the correct predictions.
   
-  ordered_coefs <- coef(cv_fit, lambda = "lambda.1se")$betas 
+  # adelie:
+  ordered_coefs <- coef(cv_fit, lambda = "lambda.min")$betas
+  
+  # gglasso:
+  # ordered_coefs <- coef(cv_fit, s = "lambda.min")[-1,]
+  
   coefs <- ordered_coefs[recovery_index]
   print(paste("Number of coefficients:", length(coefs)))
   return(coefs)
@@ -427,7 +451,7 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   new_order <- grp_info$new_order
   recovery_index <- grp_info$recovery_index
   grp_for_grplasso <- grp_info$grp_for_grplasso
-  
+
   # Set penalty factors
   penalty_factors <- if (model == "Lasso") {
       set_penalty_factors(unpenalized_covariates, genetic_variants, interaction_terms, genetic_variants_knockoff, interaction_terms_knockoff)
@@ -437,18 +461,27 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
       stop('Invalid model type. Choose either "Lasso" or "Grplasso".')
     }
   
-  # Fit Lasso model, using n-fold cross validation
+  # Change column order for group lasso
   if (model == "Grplasso") {
     X_matrix <- X_matrix[, new_order]
   }
   y_vector <- as.numeric(y)
+  
+  # Scale X_matrix (including unpenalized factors) manually 
+  if (standardize == TRUE) {
+    X_mean <- colMeans(X_matrix)
+    X_sd <- apply(X_matrix, 2, sd)
+    X_matrix <- t((t(X_matrix)-X_mean)/X_sd)
+  }
+  
+  # Fit Lasso model, using n-fold cross validation
   cat(paste0("\n--- Fitting ", model, " model...\n"))
   
   fit_data_timing <- system.time({
     if (model == "Lasso") {
-      cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize)
+      cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize=FALSE)
     } else if (model == "Grplasso") {
-      cv_fit <- fit_grp_lasso_model(X_matrix, y_vector, penalty_factors, grp_for_grplasso, n_folds, standardize)
+      cv_fit <- fit_grp_lasso_model(X_matrix, y_vector, penalty_factors, grp_for_grplasso, n_folds, standardize=FALSE)
     } else {
       stop('Invalid model type. Choose either "Lasso" or "Grplasso".')
     }
