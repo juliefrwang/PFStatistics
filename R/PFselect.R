@@ -15,7 +15,6 @@ generate_knockoff_data <- function(genetic_variants) {
   
   # Generate preliminary fit for knockoff creation
   fit.prelim.M.sdp <- GhostKnockoff.prelim(cor.G, M = 1, method = 'sdp')
-
   
   # Second order knockoffs - sdp
   mu.G <- colMeans(G)
@@ -146,14 +145,29 @@ set_penalty_factors_grpLasso <- function(num_snps, num_z, num_u) {
 #' @param penalty_factors Vector of penalty factors.
 #' @param n_folds Number of fold cross validation.
 #' @return Cross-validated Lasso model.
-fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 5, standardize = FALSE) {
-  cv_fit <- cv.glmnet(x = X_matrix, 
-                      y = y_vector, 
-                      family = "gaussian", 
-                      alpha = 1, 
-                      penalty.factor = penalty_factors, 
-                      n_folds = n_folds, 
-                      standardize = standardize)
+fit_lasso_model <- function(X_matrix, y_vector, penalty_factors, n_folds = 10, standardize = FALSE, metric = "mse") {
+  # Validate inputs
+  if (!metric %in% c("mse", "r")) {
+    stop("Invalid metric. Choose 'mse' or 'r'.")
+  }
+  
+  if (metric == "mse") {
+    cv_fit <- cv.glmnet(x = X_matrix, 
+                        y = y_vector, 
+                        family = "gaussian", 
+                        alpha = 1, 
+                        penalty.factor = penalty_factors, 
+                        nfolds = n_folds, 
+                        standardize = standardize)
+  } else if (metric == "r") {
+    cv_fit <- cv_glmnet_correlation(X_matrix, y_vector, 
+                                   nfolds = n_folds, 
+                                   alpha = 1, 
+                                   penalty.factor = penalty_factors, 
+                                   standardize = standardize)
+  }
+  
+  
   return(cv_fit)
 }
 
@@ -177,7 +191,7 @@ extract_coefficients <- function(cv_fit) {
 #' @param n_folds Number of fold cross validation.
 #' @param standardize standardization
 #' @return Cross-validated Lasso model.
-fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_folds = 5, standardize = FALSE) {
+fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_folds = 10, standardize = FALSE) {
   # adelie:
   # https://cran.r-project.org/web/packages/adelie/adelie.pdf
   cv_fit <- cv.grpnet(X = X_matrix, 
@@ -185,7 +199,7 @@ fit_grp_lasso_model <- function(X_matrix, y_vector, penalty_factors, groups, n_f
                       groups = groups,
                       alpha = 1, 
                       penalty = penalty_factors,
-                      n_folds = n_folds, 
+                      nfolds = n_folds, 
                       adev_tol = 0.999,
                       ddev_tol = 1e-5,
                       lmda_path_size = 100,
@@ -420,7 +434,7 @@ knockoff_filter <- function(local_feature_importance, local_feature_importance_k
 #' @param model ML model used to fit data, choose "Lasso" or "Grplasso"
 #' @return A list containing `scaled_selection_matrix`, `selection_matrix`, and `W_statistic_matrix`.
 #' @export
-get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff, additional_covariates, Z, y, n_folds=5, standardize=TRUE, FDR_rate=0.1, model="Lasso") {
+get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff, additional_covariates, Z, y, n_folds=10, standardize=TRUE, FDR_rate=0.1, model="Lasso", metric="mse") {
   if (is.null(Z)) {
     stop("The heterogeneity variable Z cannot be NULL. Please provide a valid input for Z.")
   }
@@ -468,7 +482,7 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   y_vector <- as.numeric(y)
   
   # Scale X_matrix (including unpenalized factors) manually 
-  if (standardize == TRUE) {
+  if (standardize == TRUE && model == "Grplasso") {
     X_mean <- colMeans(X_matrix)
     X_sd <- apply(X_matrix, 2, sd)
     X_matrix <- t((t(X_matrix)-X_mean)/X_sd)
@@ -479,7 +493,7 @@ get_importance_matrices <- function(genetic_variants, genetic_variants_knockoff,
   
   fit_data_timing <- system.time({
     if (model == "Lasso") {
-      cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize=FALSE)
+      cv_fit <- fit_lasso_model(X_matrix, y_vector, penalty_factors, n_folds, standardize=standardize, metric=metric)
     } else if (model == "Grplasso") {
       cv_fit <- fit_grp_lasso_model(X_matrix, y_vector, penalty_factors, grp_for_grplasso, n_folds, standardize=FALSE)
     } else {
