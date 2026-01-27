@@ -11,27 +11,39 @@ calculate_feature_importance(
   interaction_terms,
   interaction_terms_knockoff,
   unpenalized_covariates,
-  Z
+  Z,
+  model
 )
 }
 \arguments{
-\item{coefs}{Coefficients extracted from Lasso model.}
+\item{coefs}{Coefficients extracted from Lasso or Group Lasso model.}
 
-\item{genetic_variants}{Genetic variants matrix.}
+\item{genetic_variants}{Genetic variants matrix (n_samples x n_variants).}
 
-\item{genetic_variants_knockoff}{Knockoff genetic variants matrix.}
+\item{genetic_variants_knockoff}{Knockoff genetic variants matrix (n_samples x n_variants).}
 
-\item{interaction_terms}{Interaction terms for original genetic variants.}
+\item{interaction_terms}{Interaction terms for original genetic variants
+(n_samples x n_interaction_terms).}
 
-\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants.}
+\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants
+(n_samples x n_interaction_terms).}
 
-\item{unpenalized_covariates}{Matrix of covariates (not penalized).}
+\item{unpenalized_covariates}{Matrix of covariates (not penalized)
+(n_samples x n_covariates).}
 
-\item{Z}{Heterogeneity variable (e.g., EUR or PCs).}
+\item{Z}{Heterogeneity variable (e.g., EUR or PCs) (n_samples x n_Z_variables).}
+
+\item{model}{Model type: "Lasso" or "Grplasso".}
 }
 \value{
-List with feature importance matrices for original and knockoff variants.
+List with components:
+\item{local_feature_importance}{Matrix of feature importance for original variants
+(n_samples x n_variants).}
+\item{local_feature_importance_knockoff}{Matrix of feature importance for knockoff variants
+(n_samples x n_variants).}
 }
 \description{
-Calculate Local Feature Importance
+Calculates local feature importance matrices for original and knockoff variants
+based on extracted model coefficients.
 }
+\keyword{internal}

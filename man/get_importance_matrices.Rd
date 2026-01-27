@@ -10,29 +10,49 @@ get_importance_matrices(
   additional_covariates,
   Z,
   y,
-  n_folds = 5,
-  FDR_rate = 0.1
+  n_folds = 10,
+  standardize = TRUE,
+  FDR_rate = 0.1,
+  model = "Lasso",
+  metric = "mse"
 )
 }
 \arguments{
-\item{genetic_variants}{Matrix of genetic variants.}
+\item{genetic_variants}{Matrix of genetic variants (n_samples x n_variants).}
 
-\item{genetic_variants_knockoff}{Matrix of knockoff genetic variants.}
+\item{genetic_variants_knockoff}{Matrix of knockoff genetic variants
+(n_samples x n_variants).}
 
-\item{Z}{Vector or matrix representing heterogeneity variable(s) (e.g., EUR or PCs).}
+\item{additional_covariates}{Matrix of additional covariates (n_samples x n_covariates),
+or NULL if not provided.}
 
-\item{y}{Outcome.}
+\item{Z}{Vector or matrix representing heterogeneity variable(s) (e.g., EUR or PCs)
+(n_samples x n_Z_variables). Cannot be NULL.}
 
-\item{n_folds}{Number of fold cross validation with default of 5.}
+\item{y}{Outcome vector (length n_samples).}
 
-\item{FDR_rate}{False Discovery Rate threshold, default is 0.1.}
+\item{n_folds}{Number of folds for cross-validation (default: 10).}
 
-\item{unpenalized_covariates}{Matrix of covariates (not penalized).}
+\item{standardize}{Logical flag for x variable standardization prior to fitting
+the model sequence. The coefficients are always returned on the original scale
+(default: TRUE).}
+
+\item{FDR_rate}{False Discovery Rate threshold (default: 0.1).}
+
+\item{model}{Model type: "Lasso" or "Grplasso" (default: "Lasso").}
+
+\item{metric}{Metric for Lasso model: "mse" for mean squared error or "r" for correlation
+(default: "mse"). Only used when model="Lasso".}
 }
 \value{
-A list containing \code{scaled_selection_matrix}, \code{selection_matrix}, and \code{W_statistic_matrix}.
+A list containing:
+\item{coefs}{Extracted model coefficients.}
+\item{scaled_selection_matrix}{Scaled selection matrix (n_samples x n_variants).}
+\item{selection_matrix}{Binary selection matrix (n_samples x n_variants).}
+\item{W_statistic_matrix}{W statistic matrix (n_samples x n_variants).}
+\item{q_values}{Matrix of q-values (n_samples x n_variants).}
 }
 \description{
-This function generates scaled selection, selection, and W statistic matrices
-using genetic variants and knockoff variants data.
+Main function that generates scaled selection, selection, and W statistic matrices
+using genetic variants and knockoff variants data with Lasso or Group Lasso models.
 }

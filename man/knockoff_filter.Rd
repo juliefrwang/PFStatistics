@@ -11,15 +11,22 @@ knockoff_filter(
 )
 }
 \arguments{
-\item{local_feature_importance}{Original feature importance matrix.}
+\item{local_feature_importance}{Matrix of feature importance for original variants
+(n_samples x n_variants).}
 
-\item{local_feature_importance_knockoff}{Knockoff feature importance matrix.}
+\item{local_feature_importance_knockoff}{Matrix of feature importance for knockoff variants
+(n_samples x n_variants).}
 
-\item{FDR_rate}{False Discovery Rate threshold.}
+\item{FDR_rate}{False Discovery Rate threshold (default: 0.1).}
 }
 \value{
-List containing the selection matrix (S_ij), scaled selection matrix, and variable info.
+List containing:
+\item{S_ij}{Binary selection matrix (n_samples x n_variants).}
+\item{scaled_selection_matrix}{Scaled selection matrix (n_samples x n_variants).}
+\item{W}{W statistic matrix (original - knockoff) (n_samples x n_variants).}
+\item{q_values}{Matrix of q-values (n_samples x n_variants).}
 }
 \description{
-Knockoff Filter Calculations
+Applies the knockoff filter to feature importance matrices to control FDR.
 }
+\keyword{internal}

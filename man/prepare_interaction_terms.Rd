@@ -7,13 +7,16 @@
 prepare_interaction_terms(genetic_variants, Z)
 }
 \arguments{
-\item{genetic_variants}{Matrix of original or knockoff genetic variants.}
+\item{genetic_variants}{Matrix of original or knockoff genetic variants
+(n_samples x n_variants).}
 
-\item{Z}{Vector or matrix representing heterogeneity variable(s) (e.g., EUR or 4 PCs).}
+\item{Z}{Vector or matrix representing heterogeneity variable(s)
+(e.g., EUR or 4 PCs) (n_samples x n_Z_variables).}
 }
 \value{
-Interaction terms for genetic variants.
+Matrix of interaction terms (n_samples x (n_variants * n_Z_variables)).
 }
 \description{
-Prepare Interaction Terms
+Creates interaction terms between genetic variants and heterogeneity variables.
 }
+\keyword{internal}

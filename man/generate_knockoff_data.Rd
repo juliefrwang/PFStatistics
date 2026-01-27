@@ -7,11 +7,14 @@
 generate_knockoff_data(genetic_variants)
 }
 \arguments{
-\item{snp_data}{Data frame containing SNP and covariate data.}
+\item{genetic_variants}{Matrix of genetic variants (SNPs) where rows are
+samples and columns are SNPs.}
 }
 \value{
-Knockoff genotype matrix with the same dimensions as the original genotype matrix.
+Knockoff genotype matrix with the same dimensions as the original
+genotype matrix (n_samples x n_SNPs).
 }
 \description{
-This function takes a genotype data frame, extracts the SNP columns, and generates knockoff data.
+This function takes a genotype matrix and generates knockoff data using
+second-order knockoffs with semidefinite programming (SDP) method.
 }

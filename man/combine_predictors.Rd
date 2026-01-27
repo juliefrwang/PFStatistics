@@ -13,19 +13,26 @@ combine_predictors(
 )
 }
 \arguments{
-\item{unpenalized_covariates}{Matrix of covariates (not penalized).}
+\item{unpenalized_covariates}{Matrix of covariates (not penalized)
+(n_samples x n_covariates).}
 
-\item{genetic_variants}{Original genetic variants.}
+\item{genetic_variants}{Original genetic variants matrix
+(n_samples x n_variants).}
 
-\item{interaction_terms}{Interaction terms for genetic variants.}
+\item{interaction_terms}{Interaction terms for genetic variants
+(n_samples x n_interaction_terms).}
 
-\item{genetic_variants_knockoff}{Knockoff genetic variants.}
+\item{genetic_variants_knockoff}{Knockoff genetic variants matrix
+(n_samples x n_variants).}
 
-\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants.}
+\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants
+(n_samples x n_interaction_terms).}
 }
 \value{
-A combined predictor matrix for model fitting.
+A combined predictor matrix for model fitting
+(n_samples x total_predictors).
 }
 \description{
-Combine Predictors for Lasso Model
+Combines all predictor matrices into a single design matrix for model fitting.
 }
+\keyword{internal}

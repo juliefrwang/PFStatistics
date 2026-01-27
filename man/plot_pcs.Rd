@@ -14,21 +14,26 @@ plot_pcs(
 )
 }
 \arguments{
-\item{pcs}{Principal Components data (a matrix or data frame with at least two columns, such as PC1, PC2, etc.).}
+\item{pcs}{Principal Components data (a matrix or data frame with at least two columns,
+such as PC1, PC2, etc.) (n_samples x n_pcs).}
 
-\item{snp_importance}{Numeric vector representing feature importance values for the selected SNP.}
+\item{snp_importance}{Numeric vector representing feature importance values for the
+selected SNP (length n_samples).}
 
 \item{snp_name}{Name of the SNP to visualize.}
 
-\item{pc_x}{The name of the principal component to plot on the x-axis (e.g., "PC1").}
+\item{pc_x}{The name of the principal component to plot on the x-axis (e.g., "PC1").
+Must be a column name in pcs (default: "PC1").}
 
-\item{pc_y}{The name of the principal component to plot on the y-axis (e.g., "PC2").}
+\item{pc_y}{The name of the principal component to plot on the y-axis (e.g., "PC2").
+Must be a column name in pcs (default: "PC2").}
 
-\item{save_path}{The directory path where the plot will be saved. Defaults to the current working directory.}
+\item{save_path}{The directory path where the plot will be saved
+(default: current working directory).}
 }
 \value{
 A ggplot object of the specified PCs colored by feature importance.
 }
 \description{
-Plot PCs Visualization for a SNP
+Creates a scatter plot of two principal components colored by SNP feature importance.
 }

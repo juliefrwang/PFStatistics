@@ -2,7 +2,7 @@
 % Please edit documentation in R/PFselect.R
 \name{plot_heatmap}
 \alias{plot_heatmap}
-\title{Plot Heatmap of Selected SNPs Including Knockoff}
+\title{Plot Heatmap of Selected SNPs}
 \usage{
 plot_heatmap(
   scaled_selection_matrix,
@@ -13,17 +13,24 @@ plot_heatmap(
 )
 }
 \arguments{
-\item{scaled_selection_matrix}{Scaled selection matrix from the knockoff filter.}
+\item{scaled_selection_matrix}{Scaled selection matrix from the knockoff filter
+(n_samples x n_variants).}
 
-\item{selected_snp_names}{Names of selected SNPs.}
+\item{genetic_variants}{Matrix of genetic variants (n_samples x n_variants).
+Column names are used to match with selected_snp_names.}
 
-\item{eur}{Vector representing EUR percentages to sort individuals.}
+\item{selected_snp_names}{Character vector of names of selected SNPs to plot.}
 
-\item{save_path}{The directory path where the plot will be saved. Defaults to the current working directory.}
+\item{eur}{Numeric vector representing EUR percentages to sort individuals
+(length n_samples).}
+
+\item{save_path}{The directory path where the plot will be saved
+(default: current working directory).}
 }
 \value{
 A ggplot object representing the heatmap.
 }
 \description{
-Plot Heatmap of Selected SNPs Including Knockoff
+Creates a heatmap of selected SNPs based on the scaled selection matrix,
+sorted by EUR percentages for individuals.
 }

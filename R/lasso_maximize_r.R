@@ -165,6 +165,7 @@ cv_glmnet_correlation <- function(x, y,
                           standardize = FALSE, ...)
     
     # Extract coefficients (intercept first, then variable coefficients)
+    # coef() is an S3 generic from stats package - R will dispatch to the correct method
     coef_matrix <- coef(final_model)
     coefficients <- as.numeric(coef_matrix)
     names(coefficients) <- rownames(coef_matrix)
@@ -177,6 +178,7 @@ cv_glmnet_correlation <- function(x, y,
                           lambda = lambda_min, penalty.factor = penalty.factor, ...)
     
     # Extract coefficients (intercept first, then variable coefficients)
+    # coef() is an S3 generic from stats package - R will dispatch to the correct method
     coef_matrix <- coef(final_model)
     coefficients <- as.numeric(coef_matrix)
     names(coefficients) <- rownames(coef_matrix)
@@ -191,6 +193,7 @@ cv_glmnet_correlation <- function(x, y,
     if (is.null(lambda_val)) {
       lambda_val <- lambda_min
     }
+    # coef() is an S3 generic from stats package - R will dispatch to the correct method
     coef_at_lambda <- coef(result$glmnet.fit, s = lambda_val)
     return(as.numeric(coef_at_lambda))
   }

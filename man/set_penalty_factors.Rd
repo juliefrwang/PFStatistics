@@ -2,7 +2,7 @@
 % Please edit documentation in R/PFselect.R
 \name{set_penalty_factors}
 \alias{set_penalty_factors}
-\title{Set Penalty Factors}
+\title{Set Penalty Factors for Lasso}
 \usage{
 set_penalty_factors(
   unpenalized_covariates,
@@ -13,19 +13,24 @@ set_penalty_factors(
 )
 }
 \arguments{
-\item{unpenalized_covariates}{Matrix of covariates.}
+\item{unpenalized_covariates}{Matrix of covariates (n_samples x n_covariates).}
 
-\item{genetic_variants}{Matrix of original genetic variants.}
+\item{genetic_variants}{Matrix of original genetic variants (n_samples x n_variants).}
 
-\item{interaction_terms}{Interaction terms for genetic variants.}
+\item{interaction_terms}{Interaction terms for genetic variants
+(n_samples x n_interaction_terms).}
 
-\item{genetic_variants_knockoff}{Knockoff genetic variants.}
+\item{genetic_variants_knockoff}{Knockoff genetic variants
+(n_samples x n_variants).}
 
-\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants.}
+\item{interaction_terms_knockoff}{Interaction terms for knockoff genetic variants
+(n_samples x n_interaction_terms).}
 }
 \value{
-Vector of penalty factors.
+Vector of penalty factors with length equal to total number of predictors.
 }
 \description{
-Set Penalty Factors
+Creates penalty factors vector for lasso regression where unpenalized
+covariates have penalty factor 0, and all other predictors have penalty factor 1.
 }
+\keyword{internal}

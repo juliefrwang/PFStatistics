@@ -7,11 +7,12 @@
 extract_coefficients(cv_fit)
 }
 \arguments{
-\item{cv_fit}{Cross-validated Lasso model.}
+\item{cv_fit}{Cross-validated Lasso model object (from cv.glmnet).}
 }
 \value{
-Coefficients for original and knockoff genetic variants.
+Sparse matrix of coefficients at lambda.min.
 }
 \description{
-Extract Coefficients from Lasso Model
+Extracts coefficients from a cross-validated lasso model at lambda.min.
 }
+\keyword{internal}
